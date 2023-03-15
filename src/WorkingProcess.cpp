@@ -24,6 +24,7 @@ void runBraking() {
 
 
 void reduceSetpoint() {
+    working = false;
     std::cout << "reduceSetpoint" << std::endl;
 }
 
@@ -77,13 +78,13 @@ bool checkStartButtonReleasedAndNotWorking() {
 
 bool isMotorStop() {
     // std::cout << "isMotorStop" << std::endl;
-    return motorStop;
+    return motorStop && !startButtonPressed;
 }
 
 
 bool isMotorNotStop() {
     // std::cout << "isMotorNotStop" << std::endl;
-    return !motorStop;
+    return !motorStop && !startButtonPressed;
 }
 
 

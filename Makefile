@@ -9,18 +9,23 @@ INCLUDE = -Iinterface
 
 #linking main executable
 .PHONY: run
-run: main.exe
-	main.exe
+run: obj test.exe
+	test.exe
 
-.PHONY: main
-main.exe: $(OBJ_FILES) obj/main.o
+.PHONY: test
+test.exe: $(OBJ_FILES) obj/test.o
 	$(CC) -o $@ $^ $(INCLUDE)
 
 # compile each .cpp file to .o file
 obj/%.o: src/%.cpp
 	$(CC) -c -o $@ $< $(INCLUDE)
 
-obj/main.o : main.cpp
+# check if the folder obj does not exist, create it
+obj: 
+	if not exist obj mkdir obj
+
+obj/test.o : test.cpp
+	
 	$(CC) $(FLAGS) -c -o $@ $< $(INCLUDE)
 
 clean:

@@ -1,16 +1,14 @@
 #include <iostream>
-#include "WorkingProcess.h"
+#include "IState.h"
 #include "State.h"
+#include "ITransition.h"
 #include "Transition.h"
-
-bool error = false;
-bool startButtonPressed = false;
-bool working = false;
-bool motorStop = false;
-bool motorInTorqueMode = true;
+#include "WorkingProcess.h"
+#include "InterfaceProcess.h"
 
 
-int main(void) {
+int main() {
+    // define the working process.
     IState* workingProcess = new State("Working Process", nullptr, nullptr);
 
     IState* normalState = new State("Normal", nullptr, nullptr);
@@ -33,6 +31,7 @@ int main(void) {
     ITransition* normal_Working2Waiting = new Transition(normal_WorkingState, normal_WatingState, checkStartButtonPressed, nullptr);
     ITransition* normal_Braking2Idle = new Transition(normal_BrakingState, normal_IdleState, isMotorStop, nullptr);
     ITransition* normal_Braking2Braking = new Transition(normal_BrakingState, normal_BrakingState, isMotorNotStop, nullptr);
+    ITransition* normal_Braking2Waiting = new Transition(normal_BrakingState, normal_WatingState, checkStartButtonPressed, nullptr);
 
     ITransition* working_Torque2Velocity = new Transition(working_TorqueState, working_VelocityState, isMotorInVelocityMode, nullptr);
     ITransition* working_Velocity2Torque = new Transition(working_VelocityState, working_TorqueState, isMotorInTorqueMode, nullptr);
@@ -55,6 +54,7 @@ int main(void) {
     normalState->addTransition(normal_Working2Waiting);
     normalState->addTransition(normal_Braking2Idle);
     normalState->addTransition(normal_Braking2Braking);
+    normalState->addTransition(normal_Braking2Waiting);
 
 
     normal_WorkingState->addState(working_TorqueState);
@@ -63,118 +63,66 @@ int main(void) {
     normal_WorkingState->addTransition(working_Torque2Velocity);
     normal_WorkingState->addTransition(working_Velocity2Torque);
 
+    // define the modbus receiver process
+    IState* modbusReceiverProcess = new State("Modbus Receiver Process", nullptr, nullptr);
 
-    workingProcess->onEnter();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    startButtonPressed = true;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Press Button" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    startButtonPressed = false;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Release Button" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    motorInTorqueMode = false;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Move To velocity mode" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    motorInTorqueMode = true;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Move To velocity mode" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    startButtonPressed = true;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Press Button" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    startButtonPressed = false;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Release Button" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    motorStop = true;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    std::cout << "Motor Stops" << std::endl;
-    std::cout << "+++++++++++++++++++++" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    workingProcess->run();
-    std::cout << "---------------------------" << std::endl;
-    std::cout << "After run" << std::endl;
+    IState* receive_StartState = new State("Start", nullptr, nullptr);
+    IState* receive_IdleState = new State("Idle", nullptr, nullptr);
+    IState* receive_HandleNewBytesState = new State("Handle New Bytes", nullptr, nullptr);
+    IState* endHandlingState = new State("Frame Checking", nullptr, nullptr);
 
-    delete workingProcess;
-    delete normalState;
-    delete errorState;
-    delete normal_IdleState;
-    delete normal_BrakingState;
-    delete normal_WatingState;
-    delete normal_WorkingState;
-    delete working_TorqueState;
-    delete working_VelocityState;
-    delete normal2Error;
-    delete error2Normal;
-    delete normal_Idle2Wating;
-    delete normal_Wating2Working;
-    delete normal_Wating2Braking;
-    delete normal_Working2Waiting;
-    delete normal_Braking2Idle;
-    delete normal_Braking2Braking;
-    delete working_Torque2Velocity;
-    delete working_Velocity2Torque;
+    IState* endHandling_FrameCheckingState = new State("Frame Checking", nullptr, nullptr);
+    IState* endHandling_ValidFrameState = new State("Valid Frame", nullptr, nullptr);
+    IState* endHandling_InvalidFrameState = new State("Invalid Frame", nullptr, nullptr);
 
-    return 0;
+    // define the modbus transmit process
+    IState* modbusTransmitProcess = new State("Modbus Transmit Process", nullptr, nullptr);
+    IState* transmit_IdleState = new State("Idle", nullptr, nullptr);
+    IState* transmit_sendState = new State("Transmit", nullptr, nullptr);
+
+    // define the modbus frame handling process
+    IState* modbusFrameHandlingProcess = new State("Modbus Frame Handling", nullptr, nullptr);
+    IState* handling_IdleState = new State("Idle", nullptr, nullptr);
+    IState* handling_CheckingState = new State("Checking", nullptr, nullptr);
+    IState* handling_HandleState = new State("Handle", nullptr, nullptr);
+    IState* handling_NormalResponseState = new State("Normal Response", nullptr, nullptr);
+    IState* handling_ErrorResponseState = new State("Error Response", nullptr, nullptr);
+
+
+    // define the interface process
+    IState* interfaceProcess = new State("Interface Process", nullptr, nullptr);
+    IState* interface_NoAddressState = new State("No Address", nullptr, interface_runNoAddress);
+    IState* interface_TimingState = new State("Timing", interface_onEnterTiming, nullptr);
+    IState* interface_AddressState = new State("Address", nullptr, nullptr);
+
+    IState* address_NormalState = new State("Have Address Normal", nullptr, address_runNormalMode);
+    IState* address_ManufactureState = new State("Have Address Manufacture", nullptr, address_runFactoryMode);
+    IState* address_EngineerMode = new State("Have Address Engineer Mode", nullptr, address_runEngineerMode);
+
+    ITransition* interface_NoAddress2AddressState = new Transition(
+            interface_NoAddressState, interface_AddressState, interface_checkHaveAddress, nullptr);
+    ITransition* interface_Timing2NoAdress = new Transition(
+            interface_TimingState, interface_NoAddressState, 
+            interface_isHardResetButtonReleasedAndTimerMoreThan3, nullptr);
+    ITransition* interface_Timing2Address = new Transition(
+            interface_TimingState, interface_AddressState, 
+            interface_isHardResetButtonReleasedAndTimerLessThan3, nullptr);
+    ITransition* interface_Address2Timing = new Transition(
+            interface_AddressState, interface_TimingState, 
+            interface_isHardResetButtonPressed, nullptr);
+    ITransition* address_Normal2Factory = new Transition(
+            address_NormalState, address_ManufactureState, 
+            address_isFactoryMode, nullptr);
+    ITransition* address_Normal2Engineer = new Transition(
+            address_NormalState, address_EngineerMode, 
+            address_isEngineerMode, nullptr);
+    ITransition* address_Factory2Normal = new Transition(
+            address_ManufactureState, address_NormalState, 
+            address_isNormalMode, nullptr);
+    ITransition* address_Engineer2Normal = new Transition(
+            address_EngineerMode, address_NormalState, 
+            address_isNormalMode, nullptr);
+    ITransition* address_Engineer2Factory = new Transition(
+            address_EngineerMode, address_ManufactureState, 
+            address_isFactoryMode, nullptr);
 }
