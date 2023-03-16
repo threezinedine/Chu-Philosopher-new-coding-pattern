@@ -1,13 +1,19 @@
 #include <iostream>
-#include "IState.h"
-#include "State.h"
-#include "ITransition.h"
-#include "Transition.h"
-#include "WorkingProcess.h"
-#include "InterfaceProcess.h"
+
+#include "constants.h"
+#include "interface/IState.h"
+#include "interface/State.h"
+#include "interface/ITransition.h"
+#include "interface/Transition.h"
+#include "interface/WorkingProcess.h"
+#include "interface/InterfaceProcess.h"
+#include "interface/dataLinkLayerProcess.h"
+#include "interface/ApplicationProcess.h"
 
 
 int main() {
+	motorSpeed.floatValue = 0;
+
     // define the working process.
     IState* workingProcess = new State("Working Process", nullptr, nullptr);
 
@@ -64,29 +70,133 @@ int main() {
     normal_WorkingState->addTransition(working_Velocity2Torque);
 
     // define the modbus receiver process
-    IState* modbusReceiverProcess = new State("Modbus Receiver Process", nullptr, nullptr);
+    IState* modbusDataLinkProcess = new State("Modbus Data Link Process", nullptr, nullptr);
 
-    IState* receive_StartState = new State("Start", nullptr, nullptr);
-    IState* receive_IdleState = new State("Idle", nullptr, nullptr);
-    IState* receive_HandleNewBytesState = new State("Handle New Bytes", nullptr, nullptr);
-    IState* endHandlingState = new State("Frame Checking", nullptr, nullptr);
+    IState* datalink_StartState = new State("Start", resetTimer, nullptr);
+    IState* datalink_IdleState = new State("Idle", nullptr, runModbusIdle);
+    IState* datalink_HandleNewBytesState = new State("Handle New Bytes", runHandleNewByte, nullptr);
+    IState* datalink_receiveWholeFrameState = new State("Frame Checking", nullptr, nullptr);
+    IState* datalink_transmitDataState = new State("Transmit", runTransmitResponse, nullptr);
 
-    IState* endHandling_FrameCheckingState = new State("Frame Checking", nullptr, nullptr);
-    IState* endHandling_ValidFrameState = new State("Valid Frame", nullptr, nullptr);
-    IState* endHandling_InvalidFrameState = new State("Invalid Frame", nullptr, nullptr);
+    IState* receiveWholeFrame_FrameCheckingState = new State("Frame Checking", runFrameChecking, nullptr);
+    IState* receiveWholeFrame_ValidFrameState = new State("Valid Frame", nullptr, runValidRequest);
+    IState* receiveWholeFrame_InvalidFrameState = new State("Invalid Frame", runDiscardFrame, runInvalidRequest);
 
-    // define the modbus transmit process
-    IState* modbusTransmitProcess = new State("Modbus Transmit Process", nullptr, nullptr);
-    IState* transmit_IdleState = new State("Idle", nullptr, nullptr);
-    IState* transmit_sendState = new State("Transmit", nullptr, nullptr);
+    ITransition* datalink_Start2Idle = new Transition(datalink_StartState, 
+                                        datalink_IdleState, checkTimeMoreThan3_5Chars, nullptr);
+	ITransition* datalink_Start2Start = new Transition(datalink_StartState, 
+										datalink_StartState, 
+										checkReceiveNewByteWithTimeLessThan1_5Chars, nullptr);
+	ITransition* datalink_Idle2HandleNewBytes = new Transition(datalink_IdleState, 
+										datalink_HandleNewBytesState, 
+										checkReceiveNewByte, nullptr);
+	ITransition* datalink_Idle2Transmit = new Transition(datalink_IdleState, 
+										datalink_transmitDataState, 
+										haveSentFrame, nullptr);
+	ITransition* datalink_HandleNewBytes2HandleNewBytes = new Transition(datalink_HandleNewBytesState, 
+										datalink_HandleNewBytesState, 
+										checkReceiveNewByteWithTimeLessThan1_5Chars, nullptr);
+	ITransition* datalink_HandleNewBytes2ReceiveWholeFrame = new Transition(datalink_HandleNewBytesState, 
+										datalink_receiveWholeFrameState, 
+										checkTimeMoreThan1_5Chars, nullptr);
+	ITransition* datalink_ReceiveWholeFrame2Idle_OK = new Transition(datalink_receiveWholeFrameState, 
+										datalink_IdleState, 
+										checkTimerMoreThan3_5CharsAndFrameIsOK, nullptr);
+	ITransition* datalink_ReceiveWholeFrame2Idle_NOK = new Transition(datalink_receiveWholeFrameState, 
+										datalink_IdleState, 
+										checkTimerMoreThan3_5CharsAndFrameIsNOK, nullptr);
+	ITransition* datalink_Transmit2Idle = new Transition(datalink_transmitDataState, 
+										datalink_IdleState, 
+										sentAllFrame, nullptr);
+	ITransition* datalink_Transmit2Transmit = new Transition(datalink_transmitDataState, 
+										datalink_transmitDataState, 
+										checkNotSendAllFrame, nullptr);
+
+	ITransition* receiveWholeFrame_FrameChecking2ValidFrame = new Transition(receiveWholeFrame_FrameCheckingState, 
+										receiveWholeFrame_ValidFrameState, 
+										isFrameValid, nullptr);
+	ITransition* receiveWholeFrame_FrameChecking2InvalidFrame = new Transition(receiveWholeFrame_FrameCheckingState, 
+										receiveWholeFrame_InvalidFrameState, 
+										isFrameInvalid, nullptr);
+	ITransition* receiveWholeFrame_ValidFrame2InvalidFrame = new Transition(receiveWholeFrame_ValidFrameState, 
+										receiveWholeFrame_InvalidFrameState, 
+										checkReceiveNewByte, nullptr);
+	ITransition* receiveWholeFrame_InvalidFrame2InvalidFrame = new Transition(receiveWholeFrame_InvalidFrameState, 
+										receiveWholeFrame_InvalidFrameState, 
+										checkReceiveNewByte, nullptr);
+
+	modbusDataLinkProcess->addState(datalink_StartState);
+	modbusDataLinkProcess->addState(datalink_IdleState);
+	modbusDataLinkProcess->addState(datalink_HandleNewBytesState);
+	modbusDataLinkProcess->addState(datalink_receiveWholeFrameState);
+	modbusDataLinkProcess->addState(datalink_transmitDataState);
+	modbusDataLinkProcess->setInitalState(datalink_StartState);
+	modbusDataLinkProcess->addTransition(datalink_Start2Idle);
+	modbusDataLinkProcess->addTransition(datalink_Start2Start);
+	modbusDataLinkProcess->addTransition(datalink_Idle2HandleNewBytes);
+	modbusDataLinkProcess->addTransition(datalink_Idle2Transmit);
+	modbusDataLinkProcess->addTransition(datalink_HandleNewBytes2HandleNewBytes);
+	modbusDataLinkProcess->addTransition(datalink_HandleNewBytes2ReceiveWholeFrame);
+	modbusDataLinkProcess->addTransition(datalink_ReceiveWholeFrame2Idle_OK);
+	modbusDataLinkProcess->addTransition(datalink_ReceiveWholeFrame2Idle_NOK);
+	modbusDataLinkProcess->addTransition(datalink_Transmit2Idle);
+
+	datalink_receiveWholeFrameState->addState(receiveWholeFrame_FrameCheckingState);
+	datalink_receiveWholeFrameState->addState(receiveWholeFrame_ValidFrameState);
+	datalink_receiveWholeFrameState->addState(receiveWholeFrame_InvalidFrameState);
+	datalink_receiveWholeFrameState->setInitalState(receiveWholeFrame_FrameCheckingState);
+	datalink_receiveWholeFrameState->addTransition(receiveWholeFrame_FrameChecking2ValidFrame);
+	datalink_receiveWholeFrameState->addTransition(receiveWholeFrame_FrameChecking2InvalidFrame);
+	datalink_receiveWholeFrameState->addTransition(receiveWholeFrame_ValidFrame2InvalidFrame);
+	datalink_receiveWholeFrameState->addTransition(receiveWholeFrame_InvalidFrame2InvalidFrame);
 
     // define the modbus frame handling process
     IState* modbusFrameHandlingProcess = new State("Modbus Frame Handling", nullptr, nullptr);
-    IState* handling_IdleState = new State("Idle", nullptr, nullptr);
-    IState* handling_CheckingState = new State("Checking", nullptr, nullptr);
-    IState* handling_HandleState = new State("Handle", nullptr, nullptr);
-    IState* handling_NormalResponseState = new State("Normal Response", nullptr, nullptr);
-    IState* handling_ErrorResponseState = new State("Error Response", nullptr, nullptr);
+    IState* handling_IdleState = new State("Idle", nullptr, runApplicationIdle);
+    IState* handling_CheckingState = new State("Checking", nullptr, runApplicatinCheckingRequest);
+    IState* handling_HandleState = new State("Handle", nullptr, runApplicationHandleRequest);
+    IState* handling_NormalResponseState = new State("Normal Response", nullptr, runApplicationFormatReply);
+    IState* handling_ErrorResponseState = new State("Error Response", nullptr, runApplicationFormatErrorReply);
+
+	ITransition* handling_Idle2Checking = new Transition(handling_IdleState, 
+										handling_CheckingState, 
+										checkReceiveNewRequest, nullptr);
+	ITransition* handling_Checking2Handle = new Transition(handling_CheckingState, 
+										handling_HandleState, 
+										checkFrameIsOK, nullptr);
+	ITransition* handling_Checking2ErrorResponse = new Transition(handling_CheckingState, 
+										handling_ErrorResponseState, 
+										checkFrameIsNOK, nullptr);
+	ITransition* handling_Handle2NormalResponse = new Transition(handling_HandleState, 
+										handling_NormalResponseState, 
+										checkUnicastRequest, nullptr);
+	ITransition* handling_Handle2Idle = new Transition(handling_HandleState, 
+										handling_IdleState, 
+										checkBroadcastRequest, nullptr);
+	ITransition* handling_Handle2ErrorResponse = new Transition(handling_HandleState, 
+										handling_ErrorResponseState, 
+										checkHandlingError, nullptr);
+	ITransition* handling_ErrorResponse2Idle = new Transition(handling_ErrorResponseState, 
+										handling_IdleState, 
+										checkSendingComplete, nullptr);
+	ITransition* handling_NormalResponse2Idle = new Transition(handling_NormalResponseState, 
+										handling_IdleState, 
+										checkSendingComplete, nullptr);
+
+	modbusFrameHandlingProcess->addState(handling_CheckingState);
+	modbusFrameHandlingProcess->addState(handling_HandleState);
+	modbusFrameHandlingProcess->addState(handling_NormalResponseState);
+	modbusFrameHandlingProcess->addState(handling_ErrorResponseState);
+	modbusFrameHandlingProcess->setInitalState(handling_IdleState);
+
+	modbusFrameHandlingProcess->addTransition(handling_Idle2Checking);
+	modbusFrameHandlingProcess->addTransition(handling_Checking2Handle);
+	modbusFrameHandlingProcess->addTransition(handling_Checking2ErrorResponse);
+	modbusFrameHandlingProcess->addTransition(handling_Handle2NormalResponse);
+	modbusFrameHandlingProcess->addTransition(handling_Handle2Idle);
+	modbusFrameHandlingProcess->addTransition(handling_Handle2ErrorResponse);
+	modbusFrameHandlingProcess->addTransition(handling_ErrorResponse2Idle);
+	modbusFrameHandlingProcess->addTransition(handling_NormalResponse2Idle);
 
 
     // define the interface process
@@ -125,4 +235,13 @@ int main() {
     ITransition* address_Engineer2Factory = new Transition(
             address_EngineerMode, address_ManufactureState, 
             address_isFactoryMode, nullptr);
+
+	while (true) {
+		interfaceProcess->run();
+		modbusFrameHandlingProcess->run();
+		workingProcess->run();
+		modbusDataLinkProcess->run();
+	}
+
+	return 0;
 }

@@ -2,12 +2,8 @@
 #include "WorkingProcess.h"
 #include "State.h"
 #include "Transition.h"
+#include "constants.h"
 
-bool error = false;
-bool startButtonPressed = false;
-bool working = false;
-bool motorStop = false;
-bool motorInTorqueMode = true;
 
 // these functions below are just used for testing
 void runWorkingProcess(IState* process, int time) {
@@ -42,16 +38,25 @@ int main(void) {
     ITransition* normal2Error = new Transition(normalState, errorState, checkIsError, nullptr);
     ITransition* error2Normal = new Transition(errorState, normalState, checkNotError, nullptr);
 
-    ITransition* normal_Idle2Wating = new Transition(normal_IdleState, normal_WatingState, checkStartButtonPressed, nullptr);
-    ITransition* normal_Wating2Working = new Transition(normal_WatingState, normal_WorkingState, checkStartButtonReleasedAndNotWorking, nullptr);
-    ITransition* normal_Wating2Braking = new Transition(normal_WatingState, normal_BrakingState, checkStartButtonReleasedAndWorking, nullptr);
-    ITransition* normal_Working2Waiting = new Transition(normal_WorkingState, normal_WatingState, checkStartButtonPressed, nullptr);
-    ITransition* normal_Braking2Idle = new Transition(normal_BrakingState, normal_IdleState, isMotorStop, nullptr);
-    ITransition* normal_Braking2Braking = new Transition(normal_BrakingState, normal_BrakingState, isMotorNotStop, nullptr);
-    ITransition* normal_Braking2Waiting = new Transition(normal_BrakingState, normal_WatingState, checkStartButtonPressed, nullptr);
+    ITransition* normal_Idle2Wating = new Transition(normal_IdleState, 
+                            normal_WatingState, checkStartButtonPressed, nullptr);
+    ITransition* normal_Wating2Working = new Transition(normal_WatingState, 
+                            normal_WorkingState, checkStartButtonReleasedAndNotWorking, nullptr);
+    ITransition* normal_Wating2Braking = new Transition(normal_WatingState, 
+                            normal_BrakingState, checkStartButtonReleasedAndWorking, nullptr);
+    ITransition* normal_Working2Waiting = new Transition(normal_WorkingState, 
+                            normal_WatingState, checkStartButtonPressed, nullptr);
+    ITransition* normal_Braking2Idle = new Transition(normal_BrakingState, 
+                            normal_IdleState, isMotorStop, nullptr);
+    ITransition* normal_Braking2Braking = new Transition(normal_BrakingState, 
+                            normal_BrakingState, isMotorNotStop, nullptr);
+    ITransition* normal_Braking2Waiting = new Transition(normal_BrakingState, 
+                            normal_WatingState, checkStartButtonPressed, nullptr);
 
-    ITransition* working_Torque2Velocity = new Transition(working_TorqueState, working_VelocityState, isMotorInVelocityMode, nullptr);
-    ITransition* working_Velocity2Torque = new Transition(working_VelocityState, working_TorqueState, isMotorInTorqueMode, nullptr);
+    ITransition* working_Torque2Velocity = new Transition(working_TorqueState, 
+                            working_VelocityState, isMotorInVelocityMode, nullptr);
+    ITransition* working_Velocity2Torque = new Transition(working_VelocityState, 
+                            working_TorqueState, isMotorInTorqueMode, nullptr);
 
     workingProcess->addState(normalState);
     workingProcess->addState(errorState);

@@ -12,6 +12,13 @@ INCLUDE = -Iinterface
 run: obj test.exe
 	test.exe
 
+.PHONY: main
+main: obj main.exe
+	main.exe
+
+main.exe: $(OBJ_FILES) obj/main.o
+	$(CC) -o $@ $^ $(INCLUDE)
+
 .PHONY: test
 test.exe: $(OBJ_FILES) obj/test.o
 	$(CC) -o $@ $^ $(INCLUDE)
@@ -25,7 +32,9 @@ obj:
 	if not exist obj mkdir obj
 
 obj/test.o : test.cpp
-	
+	$(CC) $(FLAGS) -c -o $@ $< $(INCLUDE)
+
+obj/main.o: main.cpp
 	$(CC) $(FLAGS) -c -o $@ $< $(INCLUDE)
 
 clean:
