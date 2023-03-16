@@ -2,7 +2,7 @@
 #include "WorkingProcess.h"
 #include "State.h"
 #include "Transition.h"
-#include "constants.h"
+#include "variables.h"
 
 
 // these functions below are just used for testing

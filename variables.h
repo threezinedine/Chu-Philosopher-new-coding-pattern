@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 union FloatRegister {
     float floatValue;
@@ -13,6 +14,7 @@ bool motorStop = false;
 bool motorInTorqueMode = true;
 
 uint16_t setpointInPercentage;
+uint16_t currentValueInPercentage;
 
 FloatRegister velocityMax;
 FloatRegister velocityMin;
@@ -27,6 +29,24 @@ FloatRegister currentModeD;
 FloatRegister voltageModeP;
 FloatRegister voltageModeI;
 FloatRegister voltageModeD;
+
+// manufacture
+FloatRegister manufactorVelocityMax;
+FloatRegister manufactorTorqueMax;
+
+FloatRegister manufactorCurrentModePMax;
+FloatRegister manufactorCurrentModePMin;
+FloatRegister manufactorCurrentModeIMax;
+FloatRegister manufactorCurrentModeIMin;
+FloatRegister manufactorCurrentModeDMax;
+FloatRegister manufactorCurrentModeDMin;
+
+FloatRegister manufactorVoltageModePMax;
+FloatRegister manufactorVoltageModePMin;
+FloatRegister manufactorVoltageModeIMax;
+FloatRegister manufactorVoltageModeIMin;
+FloatRegister manufactorVoltageModeDMax;
+FloatRegister manufactorVoltageModeDMin;
 
 // modbus datalink
 bool receiveByte = false;
@@ -47,30 +67,51 @@ bool isManufacturerMode = false;
 #define ERROR &error
 #define WORKING &working
 #define MODE &motorInTorqueMode
-#define IS_USER_MODE &isUserMode
-#define IS_ENGINEER_MODE &isEngineerMode
-#define IS_MANUFACTURER_MODE &isManufacturerMode
 
 
-bool inputs[] = {
+bool* inputs[] = {
     MODE,
-    IS_USER_MODE,
-    IS_ENGINEER_MODE,
-    IS_MANUFACTURER_MODE,
     WORKING,
 };
 
-bool coils[] = {
+bool* coils[] = {
     ERROR,
 };
 
 
-bool inputRegistersManufactureMode[] = {
+uint16_t* inputRegistersManufactureMode[] = {
+    &manufactorTorqueMax.registers[0],
+    &manufactorTorqueMax.registers[1],
+    &manufactorVelocityMax.registers[0],
+    &manufactorVelocityMax.registers[1],
+    &manufactorCurrentModePMax.registers[0],
+    &manufactorCurrentModePMax.registers[1],
+    &manufactorCurrentModePMin.registers[0],
+    &manufactorCurrentModePMin.registers[1],
+    &manufactorCurrentModeIMax.registers[0],
+    &manufactorCurrentModeIMax.registers[1],
+    &manufactorCurrentModeIMin.registers[0],
+    &manufactorCurrentModeIMin.registers[1],
+    &manufactorCurrentModeDMax.registers[0],
+    &manufactorCurrentModeDMax.registers[1],
+    &manufactorCurrentModeDMin.registers[0],
+    &manufactorCurrentModeDMin.registers[1],
+    &manufactorVoltageModePMax.registers[0],
+    &manufactorVoltageModePMax.registers[1],
+    &manufactorVoltageModePMin.registers[0],
+    &manufactorVoltageModePMin.registers[1],
+    &manufactorVoltageModeIMax.registers[0],
+    &manufactorVoltageModeIMax.registers[1],
+    &manufactorVoltageModeIMin.registers[0],
+    &manufactorVoltageModeIMin.registers[1],
+    &manufactorVoltageModeDMax.registers[0],
+    &manufactorVoltageModeDMax.registers[1],
 };
 
 
-bool holdingRegistersManufactureMode[] = {
+uint16_t* holdingRegistersManufactureMode[] = {
     &setpointInPercentage,
+    &currentValueInPercentage,
     &velocityMax.registers[0],
     &velocityMax.registers[1],
     &velocityMin.registers[0],

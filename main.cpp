@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "constants.h"
+#include "variables.h"
 #include "interface/IState.h"
 #include "interface/State.h"
 #include "interface/ITransition.h"
