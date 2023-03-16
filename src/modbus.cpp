@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../interface/dataLinkLayerProcess.h"
+#include "../interface/modbus.h"
 #include "../interface/globals.h"
 
 #define BAUD_RATE 9600
@@ -54,6 +54,11 @@ void resetTimer() {
 
 void raiseFrameReceivedFlag() {
     std::cout << "raiseFrameReceivedFlag" << std::endl;
+}
+
+
+void runProcessData() {
+    std::cout << "runProcessData" << std::endl;
 }
 
 

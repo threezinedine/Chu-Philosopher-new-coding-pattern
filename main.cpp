@@ -7,13 +7,10 @@
 #include "interface/Transition.h"
 #include "interface/WorkingProcess.h"
 #include "interface/InterfaceProcess.h"
-#include "interface/dataLinkLayerProcess.h"
-#include "interface/ApplicationProcess.h"
+#include "interface/modbus.h"
 
 
 int main() {
-	motorSpeed.floatValue = 0;
-
     // define the working process.
     IState* workingProcess = new State("Working Process", nullptr, nullptr);
 
@@ -77,6 +74,7 @@ int main() {
     IState* datalink_HandleNewBytesState = new State("Handle New Bytes", runHandleNewByte, nullptr);
     IState* datalink_receiveWholeFrameState = new State("Frame Checking", nullptr, nullptr);
     IState* datalink_transmitDataState = new State("Transmit", runTransmitResponse, nullptr);
+	IState* datalink_processData = new State("Process Data", runProcessData, nullptr);
 
     IState* receiveWholeFrame_FrameCheckingState = new State("Frame Checking", runFrameChecking, nullptr);
     IState* receiveWholeFrame_ValidFrameState = new State("Valid Frame", nullptr, runValidRequest);
@@ -99,8 +97,8 @@ int main() {
 	ITransition* datalink_HandleNewBytes2ReceiveWholeFrame = new Transition(datalink_HandleNewBytesState, 
 										datalink_receiveWholeFrameState, 
 										checkTimeMoreThan1_5Chars, nullptr);
-	ITransition* datalink_ReceiveWholeFrame2Idle_OK = new Transition(datalink_receiveWholeFrameState, 
-										datalink_IdleState, 
+	ITransition* datalink_ReceiveWholeFrame2ProcessData = new Transition(datalink_receiveWholeFrameState, 
+										datalink_processData, 
 										checkTimerMoreThan3_5CharsAndFrameIsOK, nullptr);
 	ITransition* datalink_ReceiveWholeFrame2Idle_NOK = new Transition(datalink_receiveWholeFrameState, 
 										datalink_IdleState, 
@@ -137,7 +135,7 @@ int main() {
 	modbusDataLinkProcess->addTransition(datalink_Idle2Transmit);
 	modbusDataLinkProcess->addTransition(datalink_HandleNewBytes2HandleNewBytes);
 	modbusDataLinkProcess->addTransition(datalink_HandleNewBytes2ReceiveWholeFrame);
-	modbusDataLinkProcess->addTransition(datalink_ReceiveWholeFrame2Idle_OK);
+	modbusDataLinkProcess->addTransition(datalink_ReceiveWholeFrame2ProcessData);
 	modbusDataLinkProcess->addTransition(datalink_ReceiveWholeFrame2Idle_NOK);
 	modbusDataLinkProcess->addTransition(datalink_Transmit2Idle);
 
@@ -150,64 +148,11 @@ int main() {
 	datalink_receiveWholeFrameState->addTransition(receiveWholeFrame_ValidFrame2InvalidFrame);
 	datalink_receiveWholeFrameState->addTransition(receiveWholeFrame_InvalidFrame2InvalidFrame);
 
-    // define the modbus frame handling process
-    IState* modbusFrameHandlingProcess = new State("Modbus Frame Handling", nullptr, nullptr);
-    IState* handling_IdleState = new State("Idle", nullptr, runApplicationIdle);
-    IState* handling_CheckingState = new State("Checking", nullptr, runApplicatinCheckingRequest);
-    IState* handling_HandleState = new State("Handle", nullptr, runApplicationHandleRequest);
-    IState* handling_NormalResponseState = new State("Normal Response", nullptr, runApplicationFormatReply);
-    IState* handling_ErrorResponseState = new State("Error Response", nullptr, runApplicationFormatErrorReply);
-
-	ITransition* handling_Idle2Checking = new Transition(handling_IdleState, 
-										handling_CheckingState, 
-										checkReceiveNewRequest, nullptr);
-	ITransition* handling_Checking2Handle = new Transition(handling_CheckingState, 
-										handling_HandleState, 
-										checkFrameIsOK, nullptr);
-	ITransition* handling_Checking2ErrorResponse = new Transition(handling_CheckingState, 
-										handling_ErrorResponseState, 
-										checkFrameIsNOK, nullptr);
-	ITransition* handling_Handle2NormalResponse = new Transition(handling_HandleState, 
-										handling_NormalResponseState, 
-										checkUnicastRequest, nullptr);
-	ITransition* handling_Handle2Idle = new Transition(handling_HandleState, 
-										handling_IdleState, 
-										checkBroadcastRequest, nullptr);
-	ITransition* handling_Handle2ErrorResponse = new Transition(handling_HandleState, 
-										handling_ErrorResponseState, 
-										checkHandlingError, nullptr);
-	ITransition* handling_ErrorResponse2Idle = new Transition(handling_ErrorResponseState, 
-										handling_IdleState, 
-										checkSendingComplete, nullptr);
-	ITransition* handling_NormalResponse2Idle = new Transition(handling_NormalResponseState, 
-										handling_IdleState, 
-										checkSendingComplete, nullptr);
-
-	modbusFrameHandlingProcess->addState(handling_CheckingState);
-	modbusFrameHandlingProcess->addState(handling_HandleState);
-	modbusFrameHandlingProcess->addState(handling_NormalResponseState);
-	modbusFrameHandlingProcess->addState(handling_ErrorResponseState);
-	modbusFrameHandlingProcess->setInitalState(handling_IdleState);
-
-	modbusFrameHandlingProcess->addTransition(handling_Idle2Checking);
-	modbusFrameHandlingProcess->addTransition(handling_Checking2Handle);
-	modbusFrameHandlingProcess->addTransition(handling_Checking2ErrorResponse);
-	modbusFrameHandlingProcess->addTransition(handling_Handle2NormalResponse);
-	modbusFrameHandlingProcess->addTransition(handling_Handle2Idle);
-	modbusFrameHandlingProcess->addTransition(handling_Handle2ErrorResponse);
-	modbusFrameHandlingProcess->addTransition(handling_ErrorResponse2Idle);
-	modbusFrameHandlingProcess->addTransition(handling_NormalResponse2Idle);
-
-
     // define the interface process
     IState* interfaceProcess = new State("Interface Process", nullptr, nullptr);
     IState* interface_NoAddressState = new State("No Address", nullptr, interface_runNoAddress);
     IState* interface_TimingState = new State("Timing", interface_onEnterTiming, nullptr);
     IState* interface_AddressState = new State("Address", nullptr, nullptr);
-
-    IState* address_NormalState = new State("Have Address Normal", nullptr, address_runNormalMode);
-    IState* address_ManufactureState = new State("Have Address Manufacture", nullptr, address_runFactoryMode);
-    IState* address_EngineerMode = new State("Have Address Engineer Mode", nullptr, address_runEngineerMode);
 
     ITransition* interface_NoAddress2AddressState = new Transition(
             interface_NoAddressState, interface_AddressState, interface_checkHaveAddress, nullptr);
@@ -220,25 +165,9 @@ int main() {
     ITransition* interface_Address2Timing = new Transition(
             interface_AddressState, interface_TimingState, 
             interface_isHardResetButtonPressed, nullptr);
-    ITransition* address_Normal2Factory = new Transition(
-            address_NormalState, address_ManufactureState, 
-            address_isFactoryMode, nullptr);
-    ITransition* address_Normal2Engineer = new Transition(
-            address_NormalState, address_EngineerMode, 
-            address_isEngineerMode, nullptr);
-    ITransition* address_Factory2Normal = new Transition(
-            address_ManufactureState, address_NormalState, 
-            address_isNormalMode, nullptr);
-    ITransition* address_Engineer2Normal = new Transition(
-            address_EngineerMode, address_NormalState, 
-            address_isNormalMode, nullptr);
-    ITransition* address_Engineer2Factory = new Transition(
-            address_EngineerMode, address_ManufactureState, 
-            address_isFactoryMode, nullptr);
 
 	while (true) {
 		interfaceProcess->run();
-		modbusFrameHandlingProcess->run();
 		workingProcess->run();
 		modbusDataLinkProcess->run();
 	}

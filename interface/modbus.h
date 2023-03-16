@@ -10,6 +10,7 @@ void runDiscardFrame();
 void runTransmitResponse();
 void resetTimer();
 void raiseFrameReceivedFlag();
+void runProcessData();
 
 bool checkReceiveNewByte();
 bool checkReceiveNewByteWithTimeLessThan3_5Chars();
